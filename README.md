@@ -32,119 +32,108 @@ The repository also contains a de-identification script for consent files.
 
 ## 1. Requirements and installation
 
-- **Python 3.9+.** Only the standard library; nothing to `pip install`.
+- **Python 3.9+.** No third-party packages.
 - **Java 17+.** Needed only for the HL7 validator.
 - **Network access** to `github.com` (one-time validator download),
   `packages.fhir.org` (the validator loads the MII package on first use) and
   `tx.fhir.org` (terminology server). Checks without the validator run
   offline.
 
-Installation means cloning the repository and, optionally, putting the two
-scripts on your `PATH`. The tool runs on macOS, Linux and Windows.
+The installation provides two commands: `consent-check` and `consent-deid`.
+Pick one of the routes below. After installing, download the HL7 validator
+once (section 1.4).
 
-### 1.1 macOS and Linux
+### 1.1 pipx (macOS, Linux, Windows): recommended
 
-**1. Get the code.** Any location works; `~/consent-check` is used below.
+[pipx](https://pipx.pypa.io) installs Python command-line tools into their own
+isolated environment.
 
-```bash
-git clone https://github.com/okohlbacher/consent-check.git ~/consent-check
-```
-
-For a fixed version, clone a release tag instead:
-`git clone --branch v1.0.0 https://github.com/okohlbacher/consent-check.git ~/consent-check`.
-
-**2. Install Java and the HL7 validator** (skip if you only use `--no-hl7`).
+**macOS / Linux**
 
 ```bash
-brew install openjdk        # macOS; on Linux use your package manager, e.g. apt install default-jre
-mkdir -p ~/.fhir
-curl -L -o ~/.fhir/validator_cli.jar \
-  https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar
+brew install pipx            # or: apt install pipx / dnf install pipx
+pipx ensurepath              # once; then open a new terminal
+pipx install consent-check
 ```
 
-**3. Put the commands on your `PATH` (optional).** Symlink the scripts; the
-checker finds its bundled MII files through the symlink.
-
-```bash
-mkdir -p ~/.local/bin
-ln -s ~/consent-check/consent_check.py ~/.local/bin/consent-check
-ln -s ~/consent-check/consent_deid.py  ~/.local/bin/consent-deid
-```
-
-If `~/.local/bin` isn't on your `PATH` yet, add it once and open a new
-terminal. For bash, use `~/.bashrc` instead of `~/.zshrc`:
-
-```bash
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
-```
-
-**4. Check the installation.**
-
-```bash
-consent-check ~/consent-check/mii-consent-2025.0.1/examples
-```
-
-Without step 3, run `python3 ~/consent-check/consent_check.py …` instead.
-
-- **Update:** `git -C ~/consent-check pull`. The symlinks always point at the
-  current code.
-- **Uninstall:** remove the two symlinks, the clone and, if no longer needed,
-  `~/.fhir/validator_cli.jar`.
-
-### 1.2 Windows
-
-Use PowerShell or the Command Prompt. `py` is the Python launcher that comes
-with the python.org and winget installers.
-
-**1. Install Python, Git and Java** (skip any you already have).
+**Windows** (PowerShell)
 
 ```powershell
-winget install Python.Python.3.12 Git.Git Microsoft.OpenJDK.21
+winget install Python.Python.3.12
+py -m pip install --user pipx
+py -m pipx ensurepath        # once; then open a new terminal
+pipx install consent-check
 ```
 
-**2. Get the code and the HL7 validator.** Open a new terminal first, so the
-freshly installed tools are found.
+**Pinned version.** `pipx install consent-check==1.1.0`, or straight from
+GitHub: `pipx install git+https://github.com/okohlbacher/consent-check@v1.1.0`.
 
-```powershell
-git clone https://github.com/okohlbacher/consent-check.git $HOME\consent-check
-mkdir $HOME\.fhir -Force
-curl.exe -L -o $HOME\.fhir\validator_cli.jar https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar
+- **Update:** `pipx upgrade consent-check`.
+- **Uninstall:** `pipx uninstall consent-check`.
+
+### 1.2 Homebrew (macOS, Linux)
+
+```bash
+brew install okohlbacher/tap/consent-check
 ```
 
-**3. Run it.**
+The formula also installs Java (`openjdk`) and wires it up for the validator,
+so you only need to download the validator itself (section 1.4).
 
-```powershell
-py $HOME\consent-check\consent_check.py $HOME\consent-check\mii-consent-2025.0.1\examples
-py $HOME\consent-check\consent_deid.py in.json out.json
+- **Update:** `brew upgrade consent-check`.
+- **Uninstall:** `brew uninstall consent-check`.
+
+### 1.3 From source
+
+For development, or to run without installing:
+
+```bash
+git clone https://github.com/okohlbacher/consent-check.git
+cd consent-check
+python3 -m consent_check --help          # run in place (Windows: py -m consent_check)
+python3 -m consent_check.deid --help
+pip install -e .                         # optional: install the two commands, editable
 ```
 
-**4. Short commands (optional).** Create `consent-check.cmd` in a folder that
-is on your `PATH`:
+### 1.4 Java and the HL7 validator
 
-```bat
-@py "%USERPROFILE%\consent-check\consent_check.py" %*
+The validator is a Java program of about 200 MB. Python packages don't
+include it; download it once:
+
+```bash
+consent-check --install-validator        # saves it to ~/.fhir/validator_cli.jar
 ```
 
-Do the same for `consent-deid.cmd` with `consent_deid.py`. After that,
-`consent-check <path>` works in any terminal.
+The command also reports whether Java was found. If not, install Java 17+:
 
-- **Update:** `git -C $HOME\consent-check pull`.
-- **Uninstall:** delete the clone, the `.cmd` files and
-  `%USERPROFILE%\.fhir\validator_cli.jar`.
+- **macOS:** `brew install openjdk` (already done with the Homebrew route).
+- **Linux:** e.g. `apt install default-jre`.
+- **Windows:** `winget install Microsoft.OpenJDK.21`.
 
-### 1.3 Configuration
+`consent-check` uses `$JAVA_HOME/bin/java` when `JAVA_HOME` is set, otherwise
+`java` from your `PATH`. Without Java or the validator, the other checks still
+run, and the report says why the validator was skipped.
+
+**Check the installation**
+
+```bash
+consent-check --version
+consent-deid --selftest
+```
+
+### 1.5 Configuration
 
 - **Validator location.** The validator can live elsewhere: pass
-  `--validator PATH`, or set `CONSENT_VALIDATOR_JAR`. If it isn't found, the
-  report says so and the other checks still run.
+  `--validator PATH` (also together with `--install-validator`), or set
+  `CONSENT_VALIDATOR_JAR`.
 - **MII package files.** The MII policy CodeSystem and the IG examples the
-  rule checker needs ship in `mii-consent-2025.0.1/`. To use another unpacked
-  package, set `CONSENT_PKG=/path/to/package`.
+  rule checker needs are bundled. To use another unpacked package, set
+  `CONSENT_PKG=/path/to/package`.
 
 ## 2. Checking consents
 
 ```bash
-python3 consent_check.py FILE_OR_DIRECTORY [...]     # or: consent-check FILE_OR_DIRECTORY [...]
+consent-check FILE_OR_DIRECTORY [...]
 ```
 
 **Input.** Any number of files and directories; directories are scanned for
@@ -169,9 +158,9 @@ python3 consent_check.py FILE_OR_DIRECTORY [...]     # or: consent-check FILE_OR
 **Examples**
 
 ```bash
-python3 consent_check.py exports/                         # everything, text report
-python3 consent_check.py --json exports/ > report.json    # JSON for further processing
-python3 consent_check.py --no-hl7 exports/site_a.json     # quick offline check of one file
+consent-check exports/                         # everything, text report
+consent-check --json exports/ > report.json    # JSON for further processing
+consent-check --no-hl7 exports/site_a.json     # quick offline check of one file
 ```
 
 **Cross-export comparison.** The comparison needs files named
@@ -367,12 +356,12 @@ Validator issues are reported as-is under `[HL7]`, with these adjustments:
 
 ## 5. De-identifying consent files
 
-`consent_deid.py` removes identifying content before consent files are
+`consent-deid` removes identifying content before consent files are
 shared, e.g. with this checker or with other people.
 
 ```bash
-python3 consent_deid.py in.json out.json   # write de-identified copy; log of changes on stderr
-python3 consent_deid.py in.json            # check only: prints "all clean" or the elements to sanitize
+consent-deid in.json out.json   # write de-identified copy; log of changes on stderr
+consent-deid in.json            # check only: prints "all clean" or the elements to sanitize
 ```
 
 **What it changes**
@@ -398,17 +387,19 @@ causes are shown as `info`, not as errors.
 
 ## 6. Tests
 
-All tests are plain Python scripts; there is no test framework to install,
-and they run offline.
+The tests run from a source checkout (section 1.3). They are plain Python
+scripts, need no test framework, and run offline.
 
 ```bash
 python3 test_consent_check.py            # rule checker: consistency rules + injected faults
-python3 consent_deid.py --selftest       # de-identification
-python3 consent_check.py --no-hl7 mii-consent-2025.0.1/examples   # smoke test on the official MII examples
+python3 -m consent_check.deid --selftest # de-identification
+python3 -m consent_check --no-hl7 consent_check/data/mii-consent-2025.0.1/examples   # smoke test on the official MII examples
 ```
 
 The GitHub Actions workflow (`.github/workflows/test.yml`) runs these three
-commands on Linux, macOS and Windows for every push and pull request.
+commands on Linux, macOS and Windows for every push and pull request. It then
+builds the package, installs it and runs the installed `consent-check` and
+`consent-deid` commands.
 
 ### 6.1 `test_consent_check.py`: consistency rules
 
@@ -451,7 +442,7 @@ categories are exactly as expected:
 | `prereq_denied` | `.7` (MDAT speichern) denied while `.8` permitted | incorrect | contradiction |
 | `grouping_denied` | grouping code `.1` denied while its children are permitted | incorrect | contradiction, terminology |
 
-### 6.3 `consent_deid.py --selftest`
+### 6.3 `consent-deid --selftest`
 
 De-identifies a synthetic Bundle (Patient, Organization, Consent, Provenance)
 and asserts:
@@ -471,7 +462,7 @@ The automated tests run offline and don't use the validator. To check the
 validator integration, run the full check on the official examples:
 
 ```bash
-python3 consent_check.py mii-consent-2025.0.1/examples
+python3 -m consent_check consent_check/data/mii-consent-2025.0.1/examples
 ```
 
 Expected: the rule checker gives the first example no findings. For the second
@@ -511,5 +502,5 @@ behaviour; see [section 7](#7-known-issues-in-the-specification).
 
 The code is under the MIT License (see `LICENSE`).
 
-The files in `mii-consent-2025.0.1/` are © TMF e. V. and licensed under
-CC BY 4.0 (see `mii-consent-2025.0.1/NOTICE.md`).
+The files in `consent_check/data/mii-consent-2025.0.1/` are © TMF e. V. and licensed under
+CC BY 4.0 (see `consent_check/data/mii-consent-2025.0.1/NOTICE.md`).

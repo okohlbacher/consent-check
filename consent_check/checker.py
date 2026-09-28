@@ -1,21 +1,21 @@
-#!/usr/bin/env python3
 """Deterministic checker for MII KDS Consent (mii-pr-consent-einwilligung).
 
 Rules come from the profile differential in package
 de.medizininformatikinitiative.kerndatensatz.consent#2025.0.1 plus the IG text
 (policy-OID table, 30-year rule, per-policy validity, nested-provision rules).
 
-    python3 consent_check.py FILE_OR_DIR...      # table of findings
-    python3 consent_check.py --json FILE...      # machine-readable
+    consent-check FILE_OR_DIR...            # issue list (or: python3 -m consent_check ...)
+    consent-check --json FILE_OR_DIR...     # JSON issue report
+    consent-check --install-validator       # download the HL7 validator
 
 Each finding: (severity, category, rule, detail); categories are listed in CATEGORIES.
 """
-import argparse, base64, collections, glob, json, os, re, subprocess, sys, tempfile
+import argparse, base64, collections, glob, json, os, re, shutil, subprocess, sys, tempfile, urllib.request
 from datetime import date
 
-# Policy CodeSystem + IG examples from the MII package (CC BY 4.0, see mii-consent-2025.0.1/NOTICE.md);
+# Policy CodeSystem + IG examples from the MII package (CC BY 4.0, see data/mii-consent-2025.0.1/NOTICE.md);
 # override with CONSENT_PKG=<path to an unpacked package/ directory>.
-PKG = os.environ.get("CONSENT_PKG", os.path.join(os.path.dirname(os.path.realpath(__file__)), "mii-consent-2025.0.1"))
+PKG = os.environ.get("CONSENT_PKG", os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "mii-consent-2025.0.1"))
 PROFILE = "https://www.medizininformatik-initiative.de/fhir/modul-consent/StructureDefinition/mii-pr-consent-einwilligung"
 POLICY_CS = "urn:oid:2.16.840.1.113883.3.1937.777.24.5.3"
 P = "2.16.840.1.113883.3.1937.777.24.5.3."
@@ -410,6 +410,24 @@ def compare(a, b):
 
 # ---------------------------------------------------------------- HL7 validator
 VALIDATOR_JAR = os.environ.get("CONSENT_VALIDATOR_JAR", os.path.expanduser("~/.fhir/validator_cli.jar"))
+VALIDATOR_URL = "https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar"
+# JAVA_HOME wins over PATH (Homebrew's openjdk is keg-only and not on PATH).
+JAVA = os.path.join(os.environ["JAVA_HOME"], "bin", "java") if os.environ.get("JAVA_HOME") else "java"
+
+
+def install_validator(path=VALIDATOR_JAR, url=VALIDATOR_URL):
+    """Download the official HL7 validator to path (atomically: .part file, then rename)."""
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    part = path + ".part"
+    print(f"downloading {url}\n         -> {path}", file=sys.stderr)
+    with urllib.request.urlopen(url) as resp, open(part, "wb") as out:
+        total, done = int(resp.headers.get("Content-Length") or 0), 0
+        while chunk := resp.read(1 << 20):
+            out.write(chunk)
+            done += len(chunk)
+            print(f"\r  {done >> 20} / {total >> 20} MB" if total else f"\r  {done >> 20} MB", end="", file=sys.stderr)
+    os.replace(part, path)
+    print(f"\ndone. Java is {'found' if shutil.which(JAVA) else 'NOT found -- install Java 17+'}.", file=sys.stderr)
 HL7_SKIP = ("dom-6",)  # "resource should have narrative" best-practice noise
 # Not document errors: the 2025.0.1 package does not ship the category CodeSystem, and the other two are
 # 'should' (extensible/example) bindings of the FHIR base Consent resource.
@@ -438,7 +456,7 @@ def hl7(items, jar=VALIDATOR_JAR, tx="https://tx.fhir.org/r4"):
             json.dump(r, open(f, "w", encoding="utf-8"))
             files[f] = key
         out = os.path.join(tmp, "out.json")
-        cmd = ["java", "-jar", jar, *files, "-version", "4.0.1", "-ig", "de.medizininformatikinitiative.kerndatensatz.consent#2025.0.1",
+        cmd = [JAVA, "-jar", jar, *files, "-version", "4.0.1", "-ig", "de.medizininformatikinitiative.kerndatensatz.consent#2025.0.1",
                "-profile", PROFILE, "-tx", tx, "-output", out]
         proc = subprocess.run(cmd, capture_output=True, text=True)
         if not os.path.exists(out):
@@ -494,7 +512,9 @@ def build_report(paths, run_hl7=True, cross=True, jar=VALIDATOR_JAR, tx="https:/
     hl7_note = None
     if run_hl7:
         if not os.path.exists(jar):
-            hl7_note = f"HL7 validator skipped: {jar} not found (curl -L -o {jar} https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar)"
+            hl7_note = f"HL7 validator skipped: {jar} not found (run: consent-check --install-validator)"
+        elif not shutil.which(JAVA):
+            hl7_note = f"HL7 validator skipped: Java not found ({JAVA}); install Java 17+ or set JAVA_HOME"
         else:
             for k, f in hl7([(k, r) for k, r, _ in items], jar, tx).items():
                 findings[k] += f
@@ -556,16 +576,25 @@ def print_report(rep, verbose=False):
         print(f"   {f['resources']:3}  {tag[f['severity']]} [{f['source']}] {f['rule']}")
 
 
-if __name__ == "__main__":
-    ap = argparse.ArgumentParser(description="Check MII KDS Consent resources (checker rules + HL7 validator + cross-export).")
-    ap.add_argument("paths", nargs="+", help="JSON files or directories (a file may hold a Consent, an array, or a Bundle)")
+def main(argv=None):
+    from . import __version__
+    ap = argparse.ArgumentParser(prog="consent-check",
+                                 description="Check MII KDS Consent resources (IG rules + HL7 validator + cross-export).")
+    ap.add_argument("paths", nargs="*", help="JSON files or directories (a file may hold a Consent, an array, or a Bundle)")
     ap.add_argument("--json", action="store_true", help="print the JSON issue report instead of the text list")
     ap.add_argument("--no-hl7", action="store_true", help="skip the HL7 validator (fast, offline)")
     ap.add_argument("--no-cross", action="store_true", help="skip comparing exports of the same case (files named <case>_<source>.json)")
     ap.add_argument("--validator", default=VALIDATOR_JAR, help="path to validator_cli.jar (default %(default)s)")
+    ap.add_argument("--install-validator", action="store_true", help="download the HL7 validator to --validator and exit")
     ap.add_argument("--tx", default="https://tx.fhir.org/r4", help="terminology server for the validator, or 'n/a' for offline")
     ap.add_argument("-v", "--verbose", action="store_true", help="also list info-level findings")
-    a = ap.parse_args()
+    ap.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    a = ap.parse_args(argv)
+    if a.install_validator:
+        install_validator(a.validator)
+        return 0
+    if not a.paths:
+        ap.error("no input files or directories given")
     sys.stdout.reconfigure(encoding="utf-8")  # Windows consoles/redirects default to a legacy code page
     paths = [p for x in a.paths for p in (sorted(glob.glob(os.path.join(x, "*.json"))) if os.path.isdir(x) else [x])]
     rep = build_report(paths, not a.no_hl7, not a.no_cross, a.validator, a.tx)
@@ -573,3 +602,8 @@ if __name__ == "__main__":
         json.dump(rep, sys.stdout, ensure_ascii=False, indent=1)
     else:
         print_report(rep, a.verbose)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

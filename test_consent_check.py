@@ -1,8 +1,8 @@
-"""Tests for consent_check.py: one injected fault per check category, the consistency rules
+"""Tests for the consent-check rule checker: one injected fault per check category, the consistency rules
 (XACML vs policy.uri, backdating, late signature, cross-export) and the de-identification filter.
 Run: python3 test_consent_check.py"""
 import base64, copy, json
-import consent_check as cc
+from consent_check import checker as cc
 
 base = json.load(open(f"{cc.PKG}/examples/Example_MII_Consent_Einwilligung.json", encoding="utf-8"))  # 1.6f, signed = start
 rules = lambda r: {rule for s, c, rule, _ in cc.check(r) if c == "consistency"}

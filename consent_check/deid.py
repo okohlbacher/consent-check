@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """De-identify an MII KDS Consent (FHIR R4) JSON file.
 
 Replaces identifying values of Patient / Organization (and the other identity
@@ -6,10 +5,10 @@ resources that MII Consent may reference: Practitioner, PractitionerRole,
 RelatedPerson, Person) with "replaced", everywhere in the file: standalone
 resources, Bundle entries, contained resources, and References to them.
 
-Usage:  consent_deid.py <in.json> <out.json>   de-identify, write out.json
-        consent_deid.py <in.json>               check only: "all clean" or the
-                                                elements that need sanitizing
-        consent_deid.py --selftest
+Usage:  consent-deid <in.json> <out.json>   de-identify, write out.json
+        consent-deid <in.json>               check only: "all clean" or the
+                                             elements that need sanitizing
+        consent-deid --selftest
 """
 import json
 import re
@@ -342,5 +341,10 @@ def selftest():
     return 0
 
 
+def cli():
+    """Entry point of the consent-deid command."""
+    sys.exit(main(["consent-deid"] + sys.argv[1:]))
+
+
 if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+    cli()

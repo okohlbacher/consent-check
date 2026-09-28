@@ -3,6 +3,9 @@ __pycache__/
 .DS_Store
 # never commit consent data or keys
 *.key
-data/
-AnonConsents/
+/data/
+/AnonConsents/
 report*.json
+dist/
+build/
+*.egg-info/
