@@ -5,10 +5,10 @@ resources that MII Consent may reference: Practitioner, PractitionerRole,
 RelatedPerson, Person) with "replaced", everywhere in the file: standalone
 resources, Bundle entries, contained resources, and References to them.
 
-Usage:  consent-deid <in.json> <out.json>   de-identify, write out.json
-        consent-deid <in.json>               check only: "all clean" or the
+Usage:  genomde-consent-deid <in.json> <out.json>   de-identify, write out.json
+        genomde-consent-deid <in.json>               check only: "all clean" or the
                                              elements that need sanitizing
-        consent-deid --selftest
+        genomde-consent-deid --selftest
 """
 import json
 import re
@@ -342,8 +342,8 @@ def selftest():
 
 
 def cli():
-    """Entry point of the consent-deid command."""
-    sys.exit(main(["consent-deid"] + sys.argv[1:]))
+    """Entry point of the genomde-consent-deid command."""
+    sys.exit(main(["genomde-consent-deid"] + sys.argv[1:]))
 
 
 if __name__ == "__main__":

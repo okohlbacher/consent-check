@@ -3,13 +3,13 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "consent-check"
+name = "genomde-consent-check"
 dynamic = ["version"]
 description = "Check MII Kerndatensatz Consent (FHIR R4) resources: IG rules, official HL7 validator, cross-export consistency; plus de-identification"
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
-license-files = ["LICENSE", "consent_check/data/mii-consent-2025.0.1/NOTICE.md"]
+license-files = ["LICENSE", "genomde_consent_check/data/mii-consent-2025.0.1/NOTICE.md"]
 authors = [{ name = "Oliver Kohlbacher" }]
 keywords = ["FHIR", "MII", "Kerndatensatz", "consent", "validation", "medical informatics"]
 classifiers = [
@@ -24,18 +24,18 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/okohlbacher/consent-check"
-Issues = "https://github.com/okohlbacher/consent-check/issues"
+Homepage = "https://github.com/okohlbacher/genomde-consent-check"
+Issues = "https://github.com/okohlbacher/genomde-consent-check/issues"
 
 [project.scripts]
-consent-check = "consent_check.checker:main"
-consent-deid = "consent_check.deid:cli"
+genomde-consent-check = "genomde_consent_check.checker:main"
+genomde-consent-deid = "genomde_consent_check.deid:cli"
 
 [tool.setuptools]
-packages = ["consent_check"]
+packages = ["genomde_consent_check"]
 
 [tool.setuptools.dynamic]
-version = { attr = "consent_check.__version__" }
+version = { attr = "genomde_consent_check.__version__" }
 
 [tool.setuptools.package-data]
-consent_check = ["data/mii-consent-2025.0.1/*.json", "data/mii-consent-2025.0.1/*.md", "data/mii-consent-2025.0.1/examples/*.json"]
+genomde_consent_check = ["data/mii-consent-2025.0.1/*.json", "data/mii-consent-2025.0.1/*.md", "data/mii-consent-2025.0.1/examples/*.json"]

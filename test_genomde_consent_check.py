@@ -1,8 +1,8 @@
-"""Tests for the consent-check rule checker: one injected fault per check category, the consistency rules
+"""Tests for the genomde-consent-check rule checker: one injected fault per check category, the consistency rules
 (XACML vs policy.uri, backdating, late signature, cross-export) and the de-identification filter.
-Run: python3 test_consent_check.py"""
-import base64, copy, json
-from consent_check import checker as cc
+Run: python3 test_genomde_consent_check.py"""
+import base64, copy, json, os, tempfile
+from genomde_consent_check import checker as cc
 
 base = json.load(open(f"{cc.PKG}/examples/Example_MII_Consent_Einwilligung.json", encoding="utf-8"))  # 1.6f, signed = start
 rules = lambda r: {rule for s, c, rule, _ in cc.check(r) if c == "consistency"}
@@ -39,6 +39,24 @@ assert "grouping code in one export contradicts its child in the other" in {x[2]
 d = {"meta": {"extension": [{"url": "replaced"}]}, "identifier": [{"system": "replaced"}], "patient": {"reference": "Patient/1"}}
 assert cc.anon_at(d, "Consent.meta.extension[0]") and cc.anon_at(d, "Consent.identifier[0]")
 assert not cc.anon_at(d, "Consent") and not cc.anon_at(d, "Consent.patient") and not cc.anon_at(d, "$")
+# a failing HL7 validator (e.g. terminology server down) must not abort the report
+if os.name != "nt":  # the fake java below is a shell script
+    with tempfile.TemporaryDirectory() as tmp:
+        java, jar, src = os.path.join(tmp, "java"), os.path.join(tmp, "validator.jar"), os.path.join(tmp, "c.json")
+        with open(java, "w") as f:
+            f.write("#!/bin/sh\necho 'org.hl7.fhir.exceptions.TerminologyServiceException: Unable to connect'\n"
+                    "echo '  at org.hl7.Foo(Foo.java:1)'\nexit 1\n")
+        os.chmod(java, 0o755)
+        open(jar, "w").close()
+        json.dump(base, open(src, "w", encoding="utf-8"))
+        saved, cc.JAVA = cc.JAVA, java
+        try:
+            rep = cc.build_report([src], jar=jar)
+        finally:
+            cc.JAVA = saved
+        assert "HL7 validator failed" in rep["hl7_validator"] and "TerminologyServiceException" in rep["hl7_validator"], rep["hl7_validator"]
+        assert rep["resources"][0]["verdict"] == "correct"
+
 print("consistency checks PASS")
 
 

@@ -4,9 +4,9 @@ Rules come from the profile differential in package
 de.medizininformatikinitiative.kerndatensatz.consent#2025.0.1 plus the IG text
 (policy-OID table, 30-year rule, per-policy validity, nested-provision rules).
 
-    consent-check FILE_OR_DIR...            # issue list (or: python3 -m consent_check ...)
-    consent-check --json FILE_OR_DIR...     # JSON issue report
-    consent-check --install-validator       # download the HL7 validator
+    genomde-consent-check FILE_OR_DIR...            # issue list (or: python3 -m genomde_consent_check ...)
+    genomde-consent-check --json FILE_OR_DIR...     # JSON issue report
+    genomde-consent-check --install-validator       # download the HL7 validator
 
 Each finding: (severity, category, rule, detail); categories are listed in CATEGORIES.
 """
@@ -460,7 +460,9 @@ def hl7(items, jar=VALIDATOR_JAR, tx="https://tx.fhir.org/r4"):
                "-profile", PROFILE, "-tx", tx, "-output", out]
         proc = subprocess.run(cmd, capture_output=True, text=True)
         if not os.path.exists(out):
-            raise RuntimeError(f"HL7 validator failed (exit {proc.returncode}): {proc.stdout[-500:]}{proc.stderr[-500:]}")
+            lines = [ln.strip() for ln in (proc.stdout + proc.stderr).splitlines() if ln.strip()]
+            causes = [ln for ln in lines if re.search(r"(Exception|Error)\b", ln) and not ln.startswith(("at ", "..."))]
+            raise RuntimeError((causes[-1] if causes else lines[-1] if lines else f"exit {proc.returncode}")[:300])
         bundle = json.load(open(out, encoding="utf-8"))
     raw = dict(items)
     res = {k: [] for k in files.values()}
@@ -512,12 +514,16 @@ def build_report(paths, run_hl7=True, cross=True, jar=VALIDATOR_JAR, tx="https:/
     hl7_note = None
     if run_hl7:
         if not os.path.exists(jar):
-            hl7_note = f"HL7 validator skipped: {jar} not found (run: consent-check --install-validator)"
+            hl7_note = f"HL7 validator skipped: {jar} not found (run: genomde-consent-check --install-validator)"
         elif not shutil.which(JAVA):
             hl7_note = f"HL7 validator skipped: Java not found ({JAVA}); install Java 17+ or set JAVA_HOME"
         else:
-            for k, f in hl7([(k, r) for k, r, _ in items], jar, tx).items():
-                findings[k] += f
+            try:
+                for k, f in hl7([(k, r) for k, r, _ in items], jar, tx).items():
+                    findings[k] += f
+            except RuntimeError as ex:  # e.g. terminology server unreachable: keep the other checks
+                hl7_note = f"HL7 validator failed, results without it ({ex})" + \
+                    "; retry, or use --tx n/a to validate without the terminology server"
     resources = []
     for k, r, p in items:
         findings[k] = collapse(findings[k])
@@ -578,7 +584,7 @@ def print_report(rep, verbose=False):
 
 def main(argv=None):
     from . import __version__
-    ap = argparse.ArgumentParser(prog="consent-check",
+    ap = argparse.ArgumentParser(prog="genomde-consent-check",
                                  description="Check MII KDS Consent resources (IG rules + HL7 validator + cross-export).")
     ap.add_argument("paths", nargs="*", help="JSON files or directories (a file may hold a Consent, an array, or a Bundle)")
     ap.add_argument("--json", action="store_true", help="print the JSON issue report instead of the text list")

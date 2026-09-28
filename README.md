@@ -1,4 +1,4 @@
-# consent-check
+# genomde-consent-check
 
 A command-line tool that checks FHIR R4 `Consent` resources against the
 **MII Kerndatensatz Modul Consent**: the profile `mii-pr-consent-einwilligung`
@@ -39,7 +39,7 @@ The repository also contains a de-identification script for consent files.
   `tx.fhir.org` (terminology server). Checks without the validator run
   offline.
 
-The installation provides two commands: `consent-check` and `consent-deid`.
+The installation provides two commands: `genomde-consent-check` and `genomde-consent-deid`.
 Pick one of the routes below. After installing, download the HL7 validator
 once (section 1.4).
 
@@ -53,7 +53,7 @@ isolated environment.
 ```bash
 brew install pipx            # or: apt install pipx / dnf install pipx
 pipx ensurepath              # once; then open a new terminal
-pipx install consent-check
+pipx install genomde-consent-check
 ```
 
 **Windows** (PowerShell)
@@ -62,42 +62,42 @@ pipx install consent-check
 winget install Python.Python.3.12
 py -m pip install --user pipx
 py -m pipx ensurepath        # once; then open a new terminal
-pipx install consent-check
+pipx install genomde-consent-check
 ```
 
-**Pinned version.** `pipx install consent-check==1.1.0`, or straight from
-GitHub: `pipx install git+https://github.com/okohlbacher/consent-check@v1.1.0`.
+**Pinned version.** `pipx install genomde-consent-check==2.0.0`, or straight from
+GitHub: `pipx install git+https://github.com/okohlbacher/genomde-consent-check@v2.0.0`.
 
-- **Update:** `pipx upgrade consent-check`.
-- **Uninstall:** `pipx uninstall consent-check`.
+- **Update:** `pipx upgrade genomde-consent-check`.
+- **Uninstall:** `pipx uninstall genomde-consent-check`.
 
 ### 1.2 Homebrew (macOS, Linux)
 
 ```bash
-brew install okohlbacher/tap/consent-check
+brew install okohlbacher/tap/genomde-consent-check
 ```
 
 The formula also installs Java (`openjdk`) and wires it up for the validator,
 so you only need to download the validator itself (section 1.4).
 
 Homebrew only loads formulae from third-party taps that you trust. Installing
-by the full name (`okohlbacher/tap/consent-check`) trusts the formula
+by the full name (`okohlbacher/tap/genomde-consent-check`) trusts the formula
 automatically. If Homebrew refuses anyway, run
-`brew trust --formula okohlbacher/tap/consent-check` and install again.
+`brew trust --formula okohlbacher/tap/genomde-consent-check` and install again.
 
-- **Update:** `brew upgrade consent-check`.
-- **Uninstall:** `brew uninstall consent-check`.
+- **Update:** `brew upgrade genomde-consent-check`.
+- **Uninstall:** `brew uninstall genomde-consent-check`.
 
 ### 1.3 From source
 
 For development, or to run without installing:
 
 ```bash
-git clone https://github.com/okohlbacher/consent-check.git
-cd consent-check
-python3 -m consent_check --help          # run in place (Windows: py -m consent_check)
-python3 -m consent_check.deid --help
-pip install -e .                         # optional: install the two commands, editable
+git clone https://github.com/okohlbacher/genomde-consent-check.git
+cd genomde-consent-check
+python3 -m genomde_consent_check --help        # run in place (Windows: py -m genomde_consent_check)
+python3 -m genomde_consent_check.deid --help
+pip install -e .                               # optional: install the two commands, editable
 ```
 
 ### 1.4 Java and the HL7 validator
@@ -106,7 +106,7 @@ The validator is a Java program of about 200 MB. Python packages don't
 include it; download it once:
 
 ```bash
-consent-check --install-validator        # saves it to ~/.fhir/validator_cli.jar
+genomde-consent-check --install-validator        # saves it to ~/.fhir/validator_cli.jar
 ```
 
 The command also reports whether Java was found. If not, install Java 17+:
@@ -115,15 +115,17 @@ The command also reports whether Java was found. If not, install Java 17+:
 - **Linux:** e.g. `apt install default-jre`.
 - **Windows:** `winget install Microsoft.OpenJDK.21`.
 
-`consent-check` uses `$JAVA_HOME/bin/java` when `JAVA_HOME` is set, otherwise
+`genomde-consent-check` uses `$JAVA_HOME/bin/java` when `JAVA_HOME` is set, otherwise
 `java` from your `PATH`. Without Java or the validator, the other checks still
-run, and the report says why the validator was skipped.
+run, and the report says why the validator was skipped. The same applies if the
+validator fails, e.g. because the terminology server is unreachable: the report
+names the cause, and you can retry or use `--tx n/a`.
 
 **Check the installation**
 
 ```bash
-consent-check --version
-consent-deid --selftest
+genomde-consent-check --version
+genomde-consent-deid --selftest
 ```
 
 ### 1.5 Configuration
@@ -138,7 +140,7 @@ consent-deid --selftest
 ## 2. Checking consents
 
 ```bash
-consent-check FILE_OR_DIRECTORY [...]
+genomde-consent-check FILE_OR_DIRECTORY [...]
 ```
 
 **Input.** Any number of files and directories; directories are scanned for
@@ -163,9 +165,9 @@ consent-check FILE_OR_DIRECTORY [...]
 **Examples**
 
 ```bash
-consent-check exports/                         # everything, text report
-consent-check --json exports/ > report.json    # JSON for further processing
-consent-check --no-hl7 exports/site_a.json     # quick offline check of one file
+genomde-consent-check exports/                         # everything, text report
+genomde-consent-check --json exports/ > report.json    # JSON for further processing
+genomde-consent-check --no-hl7 exports/site_a.json     # quick offline check of one file
 ```
 
 **Cross-export comparison.** The comparison needs files named
@@ -361,12 +363,12 @@ Validator issues are reported as-is under `[HL7]`, with these adjustments:
 
 ## 5. De-identifying consent files
 
-`consent-deid` removes identifying content before consent files are
+`genomde-consent-deid` removes identifying content before consent files are
 shared, e.g. with this checker or with other people.
 
 ```bash
-consent-deid in.json out.json   # write de-identified copy; log of changes on stderr
-consent-deid in.json            # check only: prints "all clean" or the elements to sanitize
+genomde-consent-deid in.json out.json   # write de-identified copy; log of changes on stderr
+genomde-consent-deid in.json            # check only: prints "all clean" or the elements to sanitize
 ```
 
 **What it changes**
@@ -396,17 +398,17 @@ The tests run from a source checkout (section 1.3). They are plain Python
 scripts, need no test framework, and run offline.
 
 ```bash
-python3 test_consent_check.py            # rule checker: consistency rules + injected faults
-python3 -m consent_check.deid --selftest # de-identification
-python3 -m consent_check --no-hl7 consent_check/data/mii-consent-2025.0.1/examples   # smoke test on the official MII examples
+python3 test_genomde_consent_check.py             # rule checker: consistency rules + injected faults
+python3 -m genomde_consent_check.deid --selftest  # de-identification
+python3 -m genomde_consent_check --no-hl7 genomde_consent_check/data/mii-consent-2025.0.1/examples   # smoke test on the official MII examples
 ```
 
 The GitHub Actions workflow (`.github/workflows/test.yml`) runs these three
 commands on Linux, macOS and Windows for every push and pull request. It then
-builds the package, installs it and runs the installed `consent-check` and
-`consent-deid` commands.
+builds the package, installs it and runs the installed `genomde-consent-check` and
+`genomde-consent-deid` commands.
 
-### 6.1 `test_consent_check.py`: consistency rules
+### 6.1 `test_genomde_consent_check.py`: consistency rules
 
 Starts from the official MII example consent (Broad Consent 1.6f) and checks:
 
@@ -420,8 +422,9 @@ Starts from the official MII example consent (Broad Consent 1.6f) and checks:
 | Second export: minors' form, one policy denied, different signature date | "minors' … adult form", "same policy permitted … denied", "signature dates differ" |
 | Second export denies grouping code `.18`, first permits child `.20` | "grouping code in one export contradicts its child in the other" |
 | Validator location on an element holding `"replaced"` | recognised as a de-identification artefact; the resource root or unrelated elements are not |
+| HL7 validator fails (simulated; skipped on Windows) | report is still produced; the failure and its cause appear in the report header |
 
-### 6.2 `test_consent_check.py`: injected faults
+### 6.2 `test_genomde_consent_check.py`: injected faults
 
 Runs the complete rule checker on the official MII example and 16 variants,
 each with one injected fault. It asserts that the verdict and the failing
@@ -447,7 +450,7 @@ categories are exactly as expected:
 | `prereq_denied` | `.7` (MDAT speichern) denied while `.8` permitted | incorrect | contradiction |
 | `grouping_denied` | grouping code `.1` denied while its children are permitted | incorrect | contradiction, terminology |
 
-### 6.3 `consent-deid --selftest`
+### 6.3 `genomde-consent-deid --selftest`
 
 De-identifies a synthetic Bundle (Patient, Organization, Consent, Provenance)
 and asserts:
@@ -467,7 +470,7 @@ The automated tests run offline and don't use the validator. To check the
 validator integration, run the full check on the official examples:
 
 ```bash
-python3 -m consent_check consent_check/data/mii-consent-2025.0.1/examples
+python3 -m genomde_consent_check genomde_consent_check/data/mii-consent-2025.0.1/examples
 ```
 
 Expected: the rule checker gives the first example no findings. For the second
@@ -507,5 +510,5 @@ behaviour; see [section 7](#7-known-issues-in-the-specification).
 
 The code is under the MIT License (see `LICENSE`).
 
-The files in `consent_check/data/mii-consent-2025.0.1/` are © TMF e. V. and licensed under
-CC BY 4.0 (see `consent_check/data/mii-consent-2025.0.1/NOTICE.md`).
+The files in `genomde_consent_check/data/mii-consent-2025.0.1/` are © TMF e. V. and licensed under
+CC BY 4.0 (see `genomde_consent_check/data/mii-consent-2025.0.1/NOTICE.md`).

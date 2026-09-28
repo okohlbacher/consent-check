@@ -1,6 +1,6 @@
 # Publishes to PyPI when a GitHub release is published (PyPI trusted publishing, no API token).
-# One-time setup on pypi.org: add a trusted publisher for project "consent-check" with
-# owner okohlbacher, repository consent-check, workflow publish.yml, environment pypi.
+# One-time setup on pypi.org: add a trusted publisher for project "genomde-consent-check" with
+# owner okohlbacher, repository genomde-consent-check, workflow publish.yml, environment pypi.
 name: publish
 on:
   release:

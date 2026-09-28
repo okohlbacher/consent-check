@@ -11,9 +11,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python test_consent_check.py
-      - run: python -m consent_check.deid --selftest
-      - run: python -m consent_check --no-hl7 consent_check/data/mii-consent-2025.0.1/examples
+      - run: python test_genomde_consent_check.py
+      - run: python -m genomde_consent_check.deid --selftest
+      - run: python -m genomde_consent_check --no-hl7 genomde_consent_check/data/mii-consent-2025.0.1/examples
       - name: build and install the package, run the installed commands
         shell: bash
         run: |
@@ -21,6 +21,6 @@ jobs:
           python -m build
           python -m pip install dist/*.whl
           cd "$RUNNER_TEMP"
-          consent-check --version
-          consent-deid --selftest
-          consent-check --no-hl7 "$GITHUB_WORKSPACE/consent_check/data/mii-consent-2025.0.1/examples"
+          genomde-consent-check --version
+          genomde-consent-deid --selftest
+          genomde-consent-check --no-hl7 "$GITHUB_WORKSPACE/genomde_consent_check/data/mii-consent-2025.0.1/examples"
