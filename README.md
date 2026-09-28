@@ -80,6 +80,11 @@ brew install okohlbacher/tap/consent-check
 The formula also installs Java (`openjdk`) and wires it up for the validator,
 so you only need to download the validator itself (section 1.4).
 
+Homebrew only loads formulae from third-party taps that you trust. Installing
+by the full name (`okohlbacher/tap/consent-check`) trusts the formula
+automatically. If Homebrew refuses anyway, run
+`brew trust --formula okohlbacher/tap/consent-check` and install again.
+
 - **Update:** `brew upgrade consent-check`.
 - **Uninstall:** `brew uninstall consent-check`.
 
