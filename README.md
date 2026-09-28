@@ -39,36 +39,107 @@ The repository also contains a de-identification script for consent files.
   `tx.fhir.org` (terminology server). Checks without the validator run
   offline.
 
+Installation means cloning the repository and, optionally, putting the two
+scripts on your `PATH`. The tool runs on macOS, Linux and Windows.
+
+### 1.1 macOS and Linux
+
+**1. Get the code.** Any location works; `~/consent-check` is used below.
+
 ```bash
 git clone https://github.com/okohlbacher/consent-check.git ~/consent-check
-# or a fixed version: git clone --branch v1.0.0 https://github.com/okohlbacher/consent-check.git ~/consent-check
+```
 
-# one-time: download the official HL7 validator (~200 MB)
+For a fixed version, clone a release tag instead:
+`git clone --branch v1.0.0 https://github.com/okohlbacher/consent-check.git ~/consent-check`.
+
+**2. Install Java and the HL7 validator** (skip if you only use `--no-hl7`).
+
+```bash
+brew install openjdk        # macOS; on Linux use your package manager, e.g. apt install default-jre
 mkdir -p ~/.fhir
 curl -L -o ~/.fhir/validator_cli.jar \
   https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar
 ```
 
-**Command on your PATH (optional).** Symlink the scripts into a directory on
-your `PATH`. The checker finds its bundled MII files through the symlink.
+**3. Put the commands on your `PATH` (optional).** Symlink the scripts; the
+checker finds its bundled MII files through the symlink.
 
 ```bash
 mkdir -p ~/.local/bin
 ln -s ~/consent-check/consent_check.py ~/.local/bin/consent-check
 ln -s ~/consent-check/consent_deid.py  ~/.local/bin/consent-deid
-consent-check --help          # needs ~/.local/bin on PATH
 ```
 
-- **Update:** `git -C ~/consent-check pull`.
-- **Uninstall:** remove the two symlinks and the clone.
+If `~/.local/bin` isn't on your `PATH` yet, add it once and open a new
+terminal. For bash, use `~/.bashrc` instead of `~/.zshrc`:
 
-The validator can live elsewhere. Pass `--validator PATH`, or set
-`CONSENT_VALIDATOR_JAR`. If it isn't found, the report says so and the other
-checks still run.
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+```
 
-The MII policy CodeSystem and the IG examples the rule checker needs ship in
-`mii-consent-2025.0.1/`. To use another unpacked package, set
-`CONSENT_PKG=/path/to/package`.
+**4. Check the installation.**
+
+```bash
+consent-check ~/consent-check/mii-consent-2025.0.1/examples
+```
+
+Without step 3, run `python3 ~/consent-check/consent_check.py …` instead.
+
+- **Update:** `git -C ~/consent-check pull`. The symlinks always point at the
+  current code.
+- **Uninstall:** remove the two symlinks, the clone and, if no longer needed,
+  `~/.fhir/validator_cli.jar`.
+
+### 1.2 Windows
+
+Use PowerShell or the Command Prompt. `py` is the Python launcher that comes
+with the python.org and winget installers.
+
+**1. Install Python, Git and Java** (skip any you already have).
+
+```powershell
+winget install Python.Python.3.12 Git.Git Microsoft.OpenJDK.21
+```
+
+**2. Get the code and the HL7 validator.** Open a new terminal first, so the
+freshly installed tools are found.
+
+```powershell
+git clone https://github.com/okohlbacher/consent-check.git $HOME\consent-check
+mkdir $HOME\.fhir -Force
+curl.exe -L -o $HOME\.fhir\validator_cli.jar https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar
+```
+
+**3. Run it.**
+
+```powershell
+py $HOME\consent-check\consent_check.py $HOME\consent-check\mii-consent-2025.0.1\examples
+py $HOME\consent-check\consent_deid.py in.json out.json
+```
+
+**4. Short commands (optional).** Create `consent-check.cmd` in a folder that
+is on your `PATH`:
+
+```bat
+@py "%USERPROFILE%\consent-check\consent_check.py" %*
+```
+
+Do the same for `consent-deid.cmd` with `consent_deid.py`. After that,
+`consent-check <path>` works in any terminal.
+
+- **Update:** `git -C $HOME\consent-check pull`.
+- **Uninstall:** delete the clone, the `.cmd` files and
+  `%USERPROFILE%\.fhir\validator_cli.jar`.
+
+### 1.3 Configuration
+
+- **Validator location.** The validator can live elsewhere: pass
+  `--validator PATH`, or set `CONSENT_VALIDATOR_JAR`. If it isn't found, the
+  report says so and the other checks still run.
+- **MII package files.** The MII policy CodeSystem and the IG examples the
+  rule checker needs ship in `mii-consent-2025.0.1/`. To use another unpacked
+  package, set `CONSENT_PKG=/path/to/package`.
 
 ## 2. Checking consents
 
@@ -337,7 +408,7 @@ python3 consent_check.py --no-hl7 mii-consent-2025.0.1/examples   # smoke test o
 ```
 
 The GitHub Actions workflow (`.github/workflows/test.yml`) runs these three
-commands on every push and pull request.
+commands on Linux, macOS and Windows for every push and pull request.
 
 ### 6.1 `test_consent_check.py`: consistency rules
 

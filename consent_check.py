@@ -67,7 +67,7 @@ def _codes():
         for c in cs:
             out[c["code"]] = (c.get("display"), parent)
             walk(c.get("concept", []), c["code"])
-    walk(json.load(open(f"{PKG}/CodeSystem-MiiConsentPolicyCodeSystem.json"))["concept"])
+    walk(json.load(open(f"{PKG}/CodeSystem-MiiConsentPolicyCodeSystem.json", encoding="utf-8"))["concept"])
     return out
 CODES = _codes()
 
@@ -352,7 +352,7 @@ def check(r):
 
 def consents(path):
     """Yield Consent-like dicts from a file holding a resource, a JSON array, or a Bundle."""
-    data = json.load(open(path))
+    data = json.load(open(path, encoding="utf-8"))
     items = data if isinstance(data, list) else [e.get("resource", {}) for e in data.get("entry", [])] if data.get("resourceType") == "Bundle" else [data]
     for i, r in enumerate(items):
         yield f"{os.path.basename(path)}#{i}", r
@@ -435,7 +435,7 @@ def hl7(items, jar=VALIDATOR_JAR, tx="https://tx.fhir.org/r4"):
         files = {}
         for i, (key, r) in enumerate(items):
             f = os.path.join(tmp, f"{i:04d}.json")
-            json.dump(r, open(f, "w"))
+            json.dump(r, open(f, "w", encoding="utf-8"))
             files[f] = key
         out = os.path.join(tmp, "out.json")
         cmd = ["java", "-jar", jar, *files, "-version", "4.0.1", "-ig", "de.medizininformatikinitiative.kerndatensatz.consent#2025.0.1",
@@ -443,7 +443,7 @@ def hl7(items, jar=VALIDATOR_JAR, tx="https://tx.fhir.org/r4"):
         proc = subprocess.run(cmd, capture_output=True, text=True)
         if not os.path.exists(out):
             raise RuntimeError(f"HL7 validator failed (exit {proc.returncode}): {proc.stdout[-500:]}{proc.stderr[-500:]}")
-        bundle = json.load(open(out))
+        bundle = json.load(open(out, encoding="utf-8"))
     raw = dict(items)
     res = {k: [] for k in files.values()}
     for e in bundle.get("entry", []):
@@ -566,6 +566,7 @@ if __name__ == "__main__":
     ap.add_argument("--tx", default="https://tx.fhir.org/r4", help="terminology server for the validator, or 'n/a' for offline")
     ap.add_argument("-v", "--verbose", action="store_true", help="also list info-level findings")
     a = ap.parse_args()
+    sys.stdout.reconfigure(encoding="utf-8")  # Windows consoles/redirects default to a legacy code page
     paths = [p for x in a.paths for p in (sorted(glob.glob(os.path.join(x, "*.json"))) if os.path.isdir(x) else [x])]
     rep = build_report(paths, not a.no_hl7, not a.no_cross, a.validator, a.tx)
     if a.json:

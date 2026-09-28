@@ -4,7 +4,7 @@ Run: python3 test_consent_check.py"""
 import base64, copy, json
 import consent_check as cc
 
-base = json.load(open(f"{cc.PKG}/examples/Example_MII_Consent_Einwilligung.json"))  # 1.6f, signed = start
+base = json.load(open(f"{cc.PKG}/examples/Example_MII_Consent_Einwilligung.json", encoding="utf-8"))  # 1.6f, signed = start
 rules = lambda r: {rule for s, c, rule, _ in cc.check(r) if c == "consistency"}
 
 assert not rules(base)
@@ -45,7 +45,7 @@ print("consistency checks PASS")
 # --- injected-fault suite: each variant of the MII example must get exactly this verdict and these categories
 def mutations():
     """Clean baseline (IG example 1) and one injected fault per failure type."""
-    base = json.load(open(f"{cc.PKG}/examples/Example_MII_Consent_Einwilligung.json"))
+    base = json.load(open(f"{cc.PKG}/examples/Example_MII_Consent_Einwilligung.json", encoding="utf-8"))
     base["policyRule"]["extension"][0]["valueBase64Binary"] = "PFBvbGljeS8+"  # "<Policy/>" instead of placeholder text
     P = cc.P
 
